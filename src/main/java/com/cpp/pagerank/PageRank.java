@@ -1,6 +1,7 @@
 package com.cpp.pagerank;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -17,31 +18,15 @@ public class PageRank {
     static TreeMap<Double, TwitterProfile> rankedProfiles = new TreeMap<>(Collections.reverseOrder());
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Integer> profileIds = new ArrayList<>();
-        Random random = new Random();
-        for(int i = 0;i<10000;i++){
-            int randomNumber = 1000000 + random.nextInt(9000000);
-            if (profileIds.contains(randomNumber)) continue;
-            else profileIds.add(randomNumber);
 
-        }
         try {
-            generateTwitterProfileSamples(profileIds);
+            generateTwitterProfileSamples();
         } catch (IOException e) {
             e.printStackTrace();
         }
         System.out.println("Sample profiles");
 
-        System.gc();
-
         int totalVertices = profileHashMap.size();
-
-        HashMap<TwitterProfile, Integer> indexedProfile = new HashMap<>();
-        int i=0;
-        for(Map.Entry<Integer, TwitterProfile> data : profileHashMap.entrySet()){
-            indexedProfile.put(data.getValue(), i);
-            i++;
-        }
 
         double[][] pageMatrix = new double[totalVertices][totalVertices];
         double[] pageRank = new double[totalVertices];
@@ -61,22 +46,6 @@ public class PageRank {
                 pageMatrix[j][getProfileIdex] = (double) 1.0 / followersCount;
             }
         }
-
-        //testPageRank();
-       // calculatePageRank(pageMatrix, pageRank, currentPageRank);
-
-        pageMatrix[0][1] = 1;
-        pageMatrix[1][4] = 1;
-        pageMatrix[2][0] = 1;
-        pageMatrix[2][1] = 1;
-        pageMatrix[2][3] = 1;
-        pageMatrix[2][4] = 1;
-        pageMatrix[3][2] = 1;
-        pageMatrix[3][4] = 1;
-        pageMatrix[4][3] = 1;
-
-        Arrays.fill(pageRank, (1.0/5.0));
-
         calculatePageRank(pageMatrix, pageRank, currentPageRank);
     }
 
@@ -114,15 +83,23 @@ public class PageRank {
 
         int count = 0;
         for(Map.Entry<Double, TwitterProfile> data : rankedProfiles.entrySet()){
-            System.out.println(data.getKey());
+            System.out.println(BigDecimal.valueOf(data.getKey()).toPlainString());
             System.out.println(data.getValue());
             count++;
             if(count > 10) break;
         }
     }
 
-    public static void generateTwitterProfileSamples(ArrayList<Integer> profileIds) throws IOException {
+    public static void generateTwitterProfileSamples() throws IOException {
         Random random = new Random();
+
+        ArrayList<Integer> profileIds = new ArrayList<>();
+        for(int i = 0;i<10000;i++){
+            int randomNumber = 1000000 + random.nextInt(9000000);
+            if (profileIds.contains(randomNumber)) continue;
+            else profileIds.add(randomNumber);
+
+        }
 
         for(int i =0;i<profileIds.size();i++){
             TwitterProfile profile = sampleProfile();
@@ -144,8 +121,8 @@ public class PageRank {
     public static TwitterProfile sampleProfile(){
         Random random = new Random();
         TwitterProfile profile = new TwitterProfile();
-        profile.setFollowers(random.nextInt(10000));
-        profile.setFollowing(random.nextInt(5000));
+        profile.setFollowers(4000 + random.nextInt(10000));
+        profile.setFollowing(1000 + random.nextInt(5000));
         return profile;
     }
 }
