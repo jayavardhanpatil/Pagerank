@@ -1,10 +1,17 @@
 package com.cpp.pagerank;
 
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by IntelliJ IDEA.
@@ -15,93 +22,62 @@ import java.util.*;
 
 public class PageRank {
 
-    private static HashMap<Integer, TwitterProfile> profileHashMap = new HashMap<>();
-    private static ArrayList<Integer> indexedprofileId = new ArrayList<>();
-    static TreeMap<Double, TwitterProfile> rankedProfiles = new TreeMap<>(Collections.reverseOrder());
+    public static HashMap<String, TwitterProfile> profileHashMap = new HashMap<>();
+    public static List<String> indexedprofileId = new ArrayList<>();
 
-    private static long totalNodes = 0;
-    private static boolean istest = false;
     public static void main(String[] args) throws IOException {
 
-        totalNodes = Long.parseLong(args[0]);
+        //Read the Crawled Twitter profiles and generate network
+        generateTwitterProfileNetwork();
 
-        if(args[1].equalsIgnoreCase("test")){
-            istest = true;
-            test();
-        }else {
+        //Calculate pageRank
+        pageRankCalculate();
+    }
 
-            try {
-                generateTwitterProfileSamples();
-            } catch (IOException e) {
-                e.printStackTrace();
+    public static void pageRankCalculate() throws IOException {
+        int totalVertices = profileHashMap.size();
+
+        indexedprofileId = new ArrayList<>(profileHashMap.keySet());
+
+        ArrayList<HashMap<Integer, Double>> pageMat = new ArrayList<>(Collections.nCopies(totalVertices, null));
+
+        //Form a matrix type data structure.
+        //Using ArrayList<HashMap> instead Matrix to optimize the Space and Time Complexity
+        for (int j = 0; j < totalVertices; j++) {
+            ArrayList<String> followings = (ArrayList<String>) profileHashMap.get(indexedprofileId.get(j)).getFollowingsList();
+            int followingsCount = followings.size();
+
+            for (String twitterId : followings) {
+                int getProfileIdex = indexedprofileId.indexOf(twitterId);
+                double value = (1.0 / followingsCount);
+                HashMap<Integer, Double> list = pageMat.get(getProfileIdex);
+                if (list == null) list = new HashMap<>();
+                list.put(j, value);
+                pageMat.set(getProfileIdex, list);
             }
-            System.out.println("Sample profiles");
-
-            int totalVertices = profileHashMap.size();
-
-          //  double[][] pageMatrix = new double[totalVertices][totalVertices];
-            double[] pageRank = new double[totalVertices];
-
-            ArrayList<HashMap<Integer, Double>> pageMat = new ArrayList<>(Collections.nCopies(totalVertices, null));
-
-            //initialize the first
-            double initializethePageRank = (double) (1.0 / totalVertices);
-            Arrays.fill(pageRank, initializethePageRank);
-
-            double[] currentPageRank = Arrays.copyOf(pageRank, pageRank.length);
-
-            //fill the matrix
-            for (int j = 0; j < totalVertices; j++) {
-
-                ArrayList<Integer> followers = (ArrayList<Integer>) profileHashMap.get(indexedprofileId.get(j)).getFollowersList();
-
-                int followersCount = profileHashMap.get(indexedprofileId.get(j)).getFollowers();
-
-                for (int twitterId : followers) {
-                    int getProfileIdex = profileHashMap.get(twitterId).getIndex();
-                   //pageMatrix[j][getProfileIdex] = (double) 1.0 / followersCount;
-                    double value = (double) (1.0 / followersCount);
-                    HashMap<Integer, Double> list = pageMat.get(getProfileIdex);
-                    if(list == null) list = new HashMap<>();
-                    list.put(j, value);
-                    pageMat.set(getProfileIdex, list);
-                }
-            }
-
-                        //calculatePageRank(pageMatrix, pageRank, currentPageRank, pageMat);
-
-            System.out.println("Sum : " + Arrays.stream(currentPageRank).sum());
-
-            LocalDateTime startTime = LocalDateTime.now();
-            calculatePageRank(pageRank, currentPageRank, pageMat);
-            LocalDateTime endTime = LocalDateTime.now();
-            System.out.println(startTime.until(endTime, ChronoUnit.SECONDS) + " Seconds");
-            //System.out.println((endTime.getNano() - startTime.getNano()));
         }
-    }
 
+        double[] pageRank = new double[totalVertices];
 
-    public static void test(){
+        //Initialize the Initialize the Page Rank
+        double initializethePageRank = (1.0 / (totalVertices));
+        Arrays.fill(pageRank, initializethePageRank);
 
-        double[][] pageMatrix = {{0,0,0,0,1},{0.5, 0, 0, 0, 0},{0.5, 0, 0, 0, 0},
-                {0, 1, 0.5, 0, 0}, {0, 0, 0.5, 1, 0}};
-        ArrayList<HashMap<Integer, Double>> listOfEdges = new ArrayList<>();
-
-        HashMap<Integer, Double> map = new HashMap<>(); map.put(1, 1.0);map.put(2, 1.0/8);map.put(3, 1.0/3);map.put(4, 1.0/3);map.put(5, 1.0/2);map.put(6, 1.0);map.put(7, 1.0);listOfEdges.add(map);
-        map = new HashMap<>(); map.put(2, 1.0/8); listOfEdges.add(map);
-        map = new HashMap<>(); map.put(2, 1.0/8);map.put(3, 1.0/3); listOfEdges.add(map);
-        map = new HashMap<>(); map.put(2, 1.0/8); listOfEdges.add(map);
-        map = new HashMap<>(); map.put(2, 1.0/8); listOfEdges.add(map);
-        map = new HashMap<>(); map.put(2, 1.0/8);map.put(4, 1.0/3); listOfEdges.add(map);
-        map = new HashMap<>(); map.put(2, 1.0/8);map.put(3, 1.0/3);map.put(4, 1.0/3);map.put(5, 1.0/2); listOfEdges.add(map);
-        map = new HashMap<>(); map.put(0,1.0); map.put(2, 1.0/8); listOfEdges.add(map);
-        double[] pageRank = new double[8];
-        Arrays.fill(pageRank, (1.0)/pageRank.length);
+        //To store current iteration PageRank values
         double[] currentPageRank = Arrays.copyOf(pageRank, pageRank.length);
-        calculatePageRank(pageRank, currentPageRank, listOfEdges);
+
+        System.out.println("Sum : " + Arrays.stream(currentPageRank).sum());
+        LocalDateTime startTime = LocalDateTime.now();
+        calculatePageRank(pageRank, currentPageRank, pageMat);
+        LocalDateTime endTime = LocalDateTime.now();
+        System.out.println(startTime.until(endTime, ChronoUnit.SECONDS) + " Seconds");
     }
 
-    public static void calculatePageRank(double[]pageRank, double[] currentPageRank, ArrayList<HashMap<Integer, Double>> pageMat){
+
+    //Calcualet PageRank on Matrix and delta of 0.85.
+    //using 0.00001 threshold to check from previous pagerank value.
+    //worstcase it iterates for 100 times
+    public static void calculatePageRank(double[]pageRank, double[] currentPageRank, ArrayList<HashMap<Integer, Double>> pageMat) throws IOException {
         boolean isChangeInPageRankVal = true;
         int iterations = 0;
 
@@ -112,10 +88,8 @@ public class PageRank {
             int k=0;
             for(;k<pageMat.size();k++){
                 double current_page_rank = 0.0;
-                //double current_page_rank1 = 0.0;
 
                 if(pageMat.get(k) == null) {
-                    System.out.println("Index : "+ k);
                     continue;
                 }
 
@@ -123,88 +97,86 @@ public class PageRank {
                         current_page_rank += j.getValue() * pageRank[j.getKey()];
                     }
 
-//                if(!istest) {
-//
-////                    for (int followers : indexedprofileHashMap.get(k).getFollowersList()) {
-////                        int getProfileIdex = profileHashMap.get(followers).getIndex();
-////                        //current_page_rank += pageMatrix[k][getProfileIdex] * pageRank[getProfileIdex];
-////                        current_page_rank += pageMat.get(k).get(getProfileIdex) * pageRank[getProfileIdex];
-////                    }
-//
-////                    for(int followers : indexedprofileHashMap.get(k).getFollowersList()){
-////                        int getProfileIdex = profileHashMap.get(followers).getIndex();
-////
-////                    }
-//                    //System.out.println(BigDecimal.valueOf(current_page_rank).toPlainString());
-//
-//                }else {
-//                    for (Map.Entry<Integer, Double> j : pageMat.get(k).entrySet()) {
-//                        current_page_rank += j.getValue() * pageRank[j.getKey()];
-//                    }
-//                }
-
                 current_page_rank = ((0.15) / pageRank.length) + (0.85 * current_page_rank);
-                if(!isChangeInPageRankVal && Math.abs(currentPageRank[k] - current_page_rank) >= 0.000001){
+                if(!isChangeInPageRankVal && Math.abs(currentPageRank[k] - current_page_rank) >= 0.00001){
                     isChangeInPageRankVal = true;
                 }
                 currentPageRank[k] = current_page_rank;
             }
-            System.out.println("Sum : " + Arrays.stream(pageRank).sum());
+
             pageRank = currentPageRank;
-            System.out.println("After assign Sum : " + Arrays.stream(currentPageRank).sum());
             iterations++;
         }
         System.out.println("Total Iterations : "+iterations);
 
+        System.out.println(Arrays.toString(pageRank));
+
+
+
         for (int i=0;i<currentPageRank.length;i++){
-            //System.out.println(currentPageRank[i]);
-            rankedProfiles.put(currentPageRank[i], profileHashMap.get(indexedprofileId.get(i)));
+            profileHashMap.get(indexedprofileId.get(i)).setRank(currentPageRank[i]);
         }
 
+
+        //Validate if all nodes sums up tp 1.0
         System.out.println("Sum : " + Arrays.stream(currentPageRank).sum());
 
-        int count = 0;
-        for(Map.Entry<Double, TwitterProfile> data : rankedProfiles.entrySet()){
-            System.out.println(BigDecimal.valueOf(data.getKey()).toPlainString());
-            System.out.println(data.getValue());
-            count++;
-            if(count > 10) break;
+        //Writing to file to highlight on the graph
+        FileWriter writer = new FileWriter("out_put_pageRank.csv");
+        writer.append("twitter_Id,page_rank_value,rank\n");
+
+        int index = 1;
+        System.out.println(profileHashMap);
+        Map<String, TwitterProfile> result = profileHashMap.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.comparingDouble(TwitterProfile::getRank)))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+
+        System.out.println(result);
+
+        for(Map.Entry<String, TwitterProfile> data : result.entrySet()){
+            writer.append(data.getValue().getTwitterId()+","+data.getValue().getRank()+","+index);
+            writer.append("\n");
+            index++;
         }
+        writer.flush();
     }
 
-    public static void generateTwitterProfileSamples() throws IOException {
-        Random random = new Random();
+    //Read Json Crawled data and create graph-network.
+    public static void generateTwitterProfileNetwork() {
 
-        ArrayList<Integer> profileIds = new ArrayList<>();
-        for(int i = 0;i<totalNodes;i++){
-            int randomNumber = 1000000 + random.nextInt(9000000);
-            if (profileIds.contains(randomNumber)) continue;
-            else profileIds.add(randomNumber);
+        //Read friendships file and convert it into a JSONObject
+        JSONParser jsonParser = new JSONParser();
+        try( FileReader fileReader = new FileReader("src/main/resources/friendships.json")){
 
-        }
-
-        for(int i =0;i<profileIds.size();i++){
-            TwitterProfile profile = sampleProfile();
-            profile.setTwitterId(profileIds.get(i));
-            profile.setIndex(i);
-            HashSet<Integer> folloers = new HashSet<>();
-            int setrandomFollowers = 10 + random.nextInt(90);
-            for(int j=0;j<setrandomFollowers;j++){
-                folloers.add(profileIds.get(random.nextInt(profileIds.size())));
+            JSONObject jsonObject = (JSONObject) jsonParser.parse(fileReader);
+            Set<String> keys = jsonObject.keySet();
+            for (String key : keys) {
+                TwitterProfile profile = new TwitterProfile();
+                profile.setTwitterId(key);
+                profileHashMap.put(key, profile);
             }
-            profile.setFollowersList(new ArrayList<>(folloers));
-            profile.setFollowers(folloers.size());
-            indexedprofileId.add(profile.getTwitterId());
-            profileHashMap.put(profile.getTwitterId(), profile);
+
+            for (String key : keys) {
+                JSONArray jsonArray = (JSONArray) jsonObject.get(key);
+                ArrayList<String> followings = new ArrayList<>();
+                TwitterProfile node = profileHashMap.get(key);
+                for (Object o : jsonArray) {
+                    String followingId = (String) o;
+                    //Increment the followers count for each profile listed
+                    if (profileHashMap.containsKey(followingId)) {
+                        TwitterProfile twitterProfile = profileHashMap.get(followingId);
+                        int followers = twitterProfile.getFollowers();
+                        twitterProfile.setFollowers(++followers);
+                        followings.add(followingId);
+                    }
+                }
+                node.setFollowing(followings.size());
+                node.setFollowingsList(followings);
+            }
+        } catch (ParseException | IOException e) {
+            e.printStackTrace();
         }
-
-    }
-
-    public static TwitterProfile sampleProfile(){
-        Random random = new Random();
-        TwitterProfile profile = new TwitterProfile();
-        profile.setFollowers(10 + random.nextInt(90));
-        profile.setFollowing(10 + random.nextInt(90));
-        return profile;
+        profileHashMap.entrySet().removeIf((entry) -> entry.getValue().getFollowers() == 0);
     }
 }

@@ -1,5 +1,10 @@
 package com.cpp.pagerank;
 
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.Comparator;
 import java.util.List;
 
@@ -11,35 +16,17 @@ import java.util.List;
  */
 public class TwitterProfile {
 
-    private int twitterId;
+    private String twitterId;
     private int followers;
     private int following;
-    private int index;
-    List<Integer> followersList;
+    List<String> followingsList;
+    private double rank;
 
-    public TwitterProfile() {
-    }
-
-    public TwitterProfile(int twitterId, int followers, int following, List<Integer> followersList) {
-        this.twitterId = twitterId;
-        this.followers = followers;
-        this.following = following;
-        this.followersList = followersList;
-    }
-
-    public int getIndex() {
-        return index;
-    }
-
-    public void setIndex(int index) {
-        this.index = index;
-    }
-
-    public int getTwitterId() {
+    public String getTwitterId() {
         return twitterId;
     }
 
-    public void setTwitterId(int twitterId) {
+    public void setTwitterId(String twitterId) {
         this.twitterId = twitterId;
     }
 
@@ -59,23 +46,30 @@ public class TwitterProfile {
         this.following = following;
     }
 
-    public List<Integer> getFollowersList() {
-        return followersList;
+    public List<String> getFollowingsList() {
+        return followingsList;
     }
 
-    public void setFollowersList(List<Integer> followersList) {
-        this.followersList = followersList;
+    public void setFollowingsList(List<String> followingsList) {
+        this.followingsList = followingsList;
     }
 
+    public double getRank() {
+        return rank;
+    }
+
+    public void setRank(double rank) {
+        this.rank = rank;
+    }
 
     @Override
     public String toString() {
         return "{" +
-                "twitterId=" + twitterId +
+                "twitterId='" + twitterId + '\'' +
                 ", followers=" + followers +
                 ", following=" + following +
-                ", index=" + index +
-                ", followersList=" + followersList +
+                ", rank=" + rank +
                 '}';
     }
+
 }
